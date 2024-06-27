@@ -13,9 +13,10 @@ var current_tile_coords:Vector2
 var current_tile:int
 var hp:float
 var speed:float = 75.0
-var attack_range:float = 1.1 # in tilemap cells
 var velocity:Vector2 = Vector2()
 var jumping:bool = false
+var attack_range:float = 1.1 # in tilemap cells
+var damage:int = 1
 var tile_position:Vector2
 var jump_rand_list:int
 var land_rand_list:int
@@ -74,12 +75,13 @@ func _physics_process(delta:float) -> void:
 	current_tile = tilemap.get_cellv(current_tile_coords)
 
 	if Input.is_action_just_pressed("jump") and not jumping:
-		# First raycast to see if we can slay an enemy
+		# First raycast to see if we can hit an enemy
 		var collider = slay_raycast.get_collider()
-		if collider is Enemy:
-			collider.hit(self)
-			hit_sfx()
-			set_hp(hp+3.0)
+		if collider != null:
+			if collider is Enemy:
+				collider.hit(self)
+				hit_sfx()
+				set_hp(hp+3.0)
 		else:
 			jump()
 
@@ -113,22 +115,35 @@ func _on_JumpTimer_timeout() -> void:
 	set_collision_layer_bit(1, 2) # enable enemy-player collision
 	$Sprite.show()
 	$FlySprite.hide()
-	var has_landed_sfx = 1
-	for body in jump_area.get_overlapping_bodies():
-		if body is Enemy:
-			body.hit(self)
-			hit_sfx()
-			set_hp(hp+3.0)
-			# jump()
-			has_landed_sfx = 0
-	if has_landed_sfx == 1:
+	var bodies = jump_area.get_overlapping_bodies()
+	# landing on floor
+	if bodies.empty():
 		land_sfx()
 		footstep_counter = 0
+	else:
+		# landing on shield
+		var shielded = false
+		for body in bodies:
+			if body.get_name() == "Shield":
+				shielded = true
+		if shielded:
+			jump()
+			# sfx?
+		else:
+			# landing on entity
+			for body in bodies:
+				if body is Enemy:
+					body.hit(self)
+					if body.hp > 0:
+						jump()
+					else:
+						set_hp(hp+3.0)
+					hit_sfx()
 
 
-func hit(damage:float) -> void:
-	# called by a hostile colliding body
-	set_hp(hp - damage)
+func hit(dmg:float) -> void:
+	# Called by hostile bodies upon collision
+	set_hp(hp - dmg)
 
 
 func set_hp(new_hp:float) -> void:
