@@ -13,6 +13,7 @@ onready var enemy_swing_sfx_list = [$EnemySFX/EnemySwingSFX/EnemySwingSFX1, $Ene
 var current_tile_coords:Vector2
 var sight_distance:int = 2 # in tiles
 var speed:float = 50.0
+var direction:Vector2 = Vector2()
 var damage:float = 0.1
 onready var boots_sfx_randi:int = 0
 onready var armour_sfx_randi:int = 0
@@ -38,12 +39,15 @@ func _physics_process(delta:float):
 			# Look for player
 			if current_tile_coords.distance_to(player.current_tile_coords) <= sight_distance \
 			and sight_timer.is_stopped():
-				sight_timer.start()
+				if line_of_sight(player):
+					state = STATES.ALERT
+				else:
+					sight_timer.start()
 		STATES.ALERT:
 			# Chase player
 			agent.set_target_location(player.global_position)
-			var dir = position.direction_to(agent.get_next_location())
-			velocity = dir * speed
+			direction = position.direction_to(agent.get_next_location())
+			velocity = direction * speed
 			agent.set_velocity(velocity)
 			if not agent.is_navigation_finished():
 				velocity = move_and_slide(velocity)
@@ -57,20 +61,20 @@ func _physics_process(delta:float):
 					footstep_counter = footstep_freq / 2
 
 
-func hit() -> void:
-	queue_free()
-
-
-func _on_SightTimer_timeout():
-	raycast.cast_to = raycast.to_local(player.global_position)
+func line_of_sight(target:Node2D) -> bool:
+	raycast.cast_to = raycast.to_local(target.global_position)
 	raycast.force_raycast_update()
 	var collider = raycast.get_collider()
-	if collider == player:
-		state = STATES.ALERT
+	return collider == target
 
 
-func enemy_footstep_counter(_delta):
-	footstep_counter += _delta * 60
+func hit(hitter:Node2D) -> void:
+	if hitter == player:
+		queue_free()
+
+
+func enemy_footstep_counter(delta:float):
+	footstep_counter += delta * 60
 	if footstep_counter >= footstep_freq:
 		enemy_footstep()
 		footstep_counter = 0
@@ -97,7 +101,7 @@ func enemy_footstep(): #plays footstep at enemy's location
 		armour_sfx_list[armour_sfx_randi].play()
 
 
-func enemy_swing_sfx(delta):
+func enemy_swing_sfx(delta:float):
 	if MusicMan.player_dead == false:
 		enemy_swing_counter += delta * 60
 		if enemy_swing_counter >= enemy_swing_freq:

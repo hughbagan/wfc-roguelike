@@ -23,7 +23,6 @@ var footstep_rand_list
 var footstep_counter = 0.0
 var footstep_frequency = 15 #lower is faster (8ish = Mr. Krabs)
 var player_swing_sfx_randi:int
-var jank_delta:float
 signal new_hp(new_hp)
 signal player_die
 
@@ -33,8 +32,6 @@ func _ready() -> void:
 
 
 func _physics_process(delta:float) -> void:
-
-	jank_delta = delta # sorry -Aiden
 
 	if Input.is_action_pressed("bloodvision"):
 		set_hp(hp-0.05)
@@ -80,7 +77,7 @@ func _physics_process(delta:float) -> void:
 		# First raycast to see if we can slay an enemy
 		var collider = slay_raycast.get_collider()
 		if collider is Enemy:
-			collider.hit()
+			collider.hit(self)
 			hit_sfx()
 			set_hp(hp+3.0)
 		else:
@@ -119,7 +116,7 @@ func _on_JumpTimer_timeout() -> void:
 	var has_landed_sfx = 1
 	for body in jump_area.get_overlapping_bodies():
 		if body is Enemy:
-			body.hit()
+			body.hit(self)
 			hit_sfx()
 			set_hp(hp+3.0)
 			# jump()
